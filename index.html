@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kinopoisk Quiz</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c27;
+    --accent: #ff5c00;
+    --accent2: #ff8c42;
+    --green: #00e676;
+    --red: #ff3d71;
+    --text: #f0f0f5;
+    --muted: #6b6b80;
+    --border: rgba(255,255,255,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grain */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .screen.active { display: flex; }
+
+  /* ── INTRO ── */
+  #intro {
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,92,0,0.18) 0%, transparent 70%);
+    text-align: center;
+  }
+
+  .logo-ring {
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 42px;
+    margin: 0 auto 28px;
+    box-shadow: 0 0 60px rgba(255,92,0,0.4);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 40px rgba(255,92,0,0.35); transform: scale(1); }
+    50% { box-shadow: 0 0 80px rgba(255,92,0,0.55); transform: scale(1.04); }
+  }
+
+  .intro-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    line-height: 1.2;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #fff 40%, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .intro-sub {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 40px;
+    max-width: 280px;
+  }
+
+  .intro-sub span { color: var(--accent2); font-weight: 600; }
+
+  .pill-row {
+    display: flex; gap: 10px; justify-content: center;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-size: 13px;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .btn-start {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 16px;
+    padding: 18px 48px;
+    cursor: pointer;
+    width: 100%;
+    max-width: 320px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 8px 32px rgba(255,92,0,0.35);
+    letter-spacing: 0.5px;
+  }
+
+  .btn-start:active { transform: scale(0.97); box-shadow: 0 4px 16px rgba(255,92,0,0.3); }
+
+  /* ── QUIZ ── */
+  #quiz {
+    padding: 20px 20px 32px;
+    justify-content: flex-start;
+  }
+
+  .progress-bar-wrap {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 24px;
+  }
+
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .progress-label {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .progress-count {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--accent);
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .question-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 28px 24px 24px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .question-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .question-emoji {
+    font-size: 32px;
+    margin-bottom: 14px;
+    display: block;
+  }
+
+  .question-text {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.45;
+    color: var(--text);
+  }
+
+  .answers-grid {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .answer-btn {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    text-align: left;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .answer-btn:hover:not(:disabled) {
+    border-color: rgba(255,92,0,0.4);
+    background: var(--surface2);
+  }
+
+  .answer-btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .answer-letter {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .answer-btn.correct {
+    border-color: var(--green);
+    background: rgba(0,230,118,0.08);
+    animation: correctPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .answer-btn.correct .answer-letter {
+    background: var(--green);
+    color: #000;
+  }
+
+  .answer-btn.wrong {
+    border-color: var(--red);
+    background: rgba(255,61,113,0.08);
+    animation: shake 0.4s ease;
+  }
+  .answer-btn.wrong .answer-letter {
+    background: var(--red);
+    color: #fff;
+  }
+
+  .answer-btn.dimmed {
+    opacity: 0.4;
+  }
+
+  .answer-btn:disabled { cursor: default; }
+
+  @keyframes correctPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    60% { transform: translateX(6px); }
+  }
+
+  /* feedback toast */
+  .feedback {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+    opacity: 0;
+    z-index: 100;
+  }
+  .feedback.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  .feedback.correct-fb { color: var(--green); border-color: rgba(0,230,118,0.3); }
+  .feedback.wrong-fb   { color: var(--accent2); border-color: rgba(255,92,0,0.3); }
+
+  /* ── RESULT ── */
+  #result {
+    background: radial-gradient(ellipse at 50% 30%, rgba(0,230,118,0.12) 0%, transparent 65%);
+    text-align: center;
+    gap: 0;
+  }
+
+  .result-icon {
+    font-size: 72px;
+    margin-bottom: 20px;
+    animation: bounceIn 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes bounceIn {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .result-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #fff, var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .result-sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+
+  .promo-card {
+    background: var(--surface);
+    border: 1.5px solid rgba(0,230,118,0.25);
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 320px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .promo-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--green), #00bcd4);
+  }
+
+  .promo-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .promo-code {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--green);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+
+  .promo-desc {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .promo-desc span { color: var(--text); font-weight: 600; }
+
+  .btn-activate {
+    background: linear-gradient(135deg, var(--green), #00bcd4);
+    color: #000;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    border: none;
+    border-radius: 14px;
+    padding: 17px 32px;
+    cursor: pointer;
+    width: 100%;
+    max-width: 320px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 8px 32px rgba(0,230,118,0.25);
+    letter-spacing: 0.3px;
+  }
+
+  .btn-activate:active { transform: scale(0.97); }
+
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  .score-badge strong { color: var(--text); font-weight: 700; }
+
+  /* slide-in animation */
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  .question-card, .answers-grid { animation: slideUp 0.35s ease both; }
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro" class="screen active">
+  <div class="logo-ring">🎬</div>
+  <h1 class="intro-title">Kinopoisk<br>Viktorina</h1>
+  <p class="intro-sub">5 ta savol — oxirida sizga <span>maxsus promokod</span> kutmoqda 🎁</p>
+  <div class="pill-row">
+    <div class="pill">⏱ 2 daqiqa</div>
+    <div class="pill">🎯 5 savol</div>
+    <div class="pill">🎁 Promokod</div>
+  </div>
+  <button class="btn-start" onclick="startQuiz()">▶ Boshlash</button>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz" class="screen">
+  <div class="progress-bar-wrap">
+    <div class="progress-meta">
+      <span class="progress-label">Savol</span>
+      <span class="progress-count" id="progress-count">1 / 5</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill" style="width:20%"></div>
+    </div>
+  </div>
+
+  <div class="question-card">
+    <span class="question-emoji" id="q-emoji">🎬</span>
+    <div class="question-text" id="q-text"></div>
+  </div>
+
+  <div class="answers-grid" id="answers"></div>
+</div>
+
+<!-- RESULT -->
+<div id="result" class="screen">
+  <div class="result-icon">🏆</div>
+  <h2 class="result-title">Barakallo!</h2>
+  <p class="result-sub">Siz viktorinani muvaffaqiyatli yakladingiz!</p>
+  <div class="score-badge">
+    🎯 Natija: <strong id="score-text">5 / 5</strong>
+  </div>
+  <div class="promo-card">
+    <div class="promo-label">🎁 Sizning promokodingiz</div>
+    <div class="promo-code">KP2025</div>
+    <div class="promo-desc">Kinopoisk'da <span>30 kun bepul</span> tomosha qiling 🍿</div>
+  </div>
+  <button class="btn-activate" onclick="activatePromo()">🎬 Promokodni faollashtirish</button>
+</div>
+
+<!-- Feedback toast -->
+<div class="feedback" id="feedback"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const questions = [
+  {
+    emoji: '🎬',
+    text: 'Qaysi film haqida bu gap: "Agar siz uni ko\'rmagan bo\'lsangiz, siz hali hech narsa ko\'rmagan bo\'lasiz" 👑',
+    answers: ['🚀 Avatar', '🕷️ Odam-o\'rgimchak', '🦁 Sherxon qiroli', '🧙 Harri Potter'],
+    correct: 0
+  },
+  {
+    emoji: '🌍',
+    text: 'Qaysi mamlakat seriallari butun dunyoni zabt etdi?',
+    answers: ['🇰🇷 Koreya', '🇺🇸 Amerika', '🇬🇧 Britaniya', '🇹🇷 Turiya'],
+    correct: 0
+  },
+  {
+    emoji: '🌙',
+    text: 'Bir kechada eng ko\'p film ko\'rish uchun qaysi vaqt eng qulay?',
+    answers: ['🌅 Ertalab', '☀️ Kunduz', '🌆 Kechqurun', '🌙 Yarim kecha'],
+    correct: 3
+  },
+  {
+    emoji: '🎭',
+    text: 'Sevimli film janringiz qaysi?',
+    answers: ['😂 Komediya', '😱 Triller', '❤️ Melodrama', '🎌 Anime'],
+    correct: -1 // все правильные
+  },
+  {
+    emoji: '🤔',
+    text: 'Kinopoisk nima?',
+    answers: ['🎬 Eng yaxshi kino platformasi', '🛒 Online do\'kon', '📱 Ijtimoiy tarmoq', '🎮 O\'yin sayti'],
+    correct: 0
+  }
+];
+
+const letters = ['A', 'B', 'C', 'D'];
+let current = 0;
+let score = 0;
+let answered = false;
+
+function startQuiz() {
+  show('quiz');
+  renderQuestion();
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function renderQuestion() {
+  answered = false;
+  const q = questions[current];
+  document.getElementById('q-emoji').textContent = q.emoji;
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('progress-count').textContent = `${current + 1} / ${questions.length}`;
+  document.getElementById('progress-fill').style.width = `${((current + 1) / questions.length) * 100}%`;
+
+  const grid = document.getElementById('answers');
+  grid.innerHTML = '';
+  // re-trigger animation
+  grid.style.animation = 'none';
+  requestAnimationFrame(() => { grid.style.animation = ''; });
+
+  q.answers.forEach((ans, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn';
+    btn.innerHTML = `<span class="answer-letter">${letters[i]}</span>${ans}`;
+    btn.onclick = () => selectAnswer(i, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function selectAnswer(index, btn) {
+  if (answered) return;
+  answered = true;
+
+  const q = questions[current];
+  const allBtns = document.querySelectorAll('.answer-btn');
+  allBtns.forEach(b => b.disabled = true);
+
+  const isCorrect = q.correct === -1 || index === q.correct;
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    score++;
+    showFeedback('✅ Zo\'r! To\'g\'ri javob!', 'correct-fb');
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+  } else {
+    btn.classList.add('wrong');
+    showFeedback('💡 Davom etamiz...', 'wrong-fb');
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    // show correct
+    if (q.correct >= 0) {
+      allBtns[q.correct].classList.add('correct');
+    }
+  }
+
+  // dim others
+  allBtns.forEach((b, i) => {
+    if (b !== btn && i !== q.correct) b.classList.add('dimmed');
+  });
+
+  setTimeout(() => {
+    current++;
+    if (current < questions.length) {
+      renderQuestion();
+    } else {
+      showResult();
+    }
+  }, 1400);
+}
+
+function showFeedback(msg, cls) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className = 'feedback ' + cls + ' show';
+  setTimeout(() => { el.classList.remove('show'); }, 1200);
+}
+
+function showResult() {
+  document.getElementById('score-text').textContent = `${score} / ${questions.length}`;
+  show('result');
+  if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+}
+
+function activatePromo() {
+  // Замени ссылку на свой лендинг
+  const url = 'https://kinopoisk.uz?promo=KP2025&utm_source=tg_quiz';
+  if (tg) {
+    tg.openLink(url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+</script>
+</body>
+</html>
